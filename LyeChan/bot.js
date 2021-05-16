@@ -1,99 +1,99 @@
-const fs = require('fs');
+
+
+//————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 const Discord = require('discord.js');
 const client = new Discord.Client();
-client.commands = new Discord.Collection();
-const secrets = require('./dados/bot_secret.json');
-const { prefix } = require('./dados/config.json');
+const config = require('./_modulos_/config.json')
+const db = require('crud-db');
+const fs = require('fs');
+//Crud-db
+db.initialize();
+//Firebase
+var firebase = require('firebase');
+let config = require('./_modulos_/firebaseConfig.json');
+firebase.initializeApp(config);
+let database = firebase.database()
+//————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 
 
 
 
 
-/*-----------------------------------------Login log-----------------------------------------------*/
-client.once('ready', () => {
-    let token = '';
-    let id = '';
-    const webhookClient = new Discord.WebhookClient(id, token);
-
-    const embed = new Discord.MessageEmbed()
-        .setTitle('✅**-<Logado com sucesso>-**✅')
-        .setColor('#0099ff');
-
-    webhookClient.send(embed);
-});
-/*/*---------------------------------------------------------------------------------------------------*/
 
 
+//————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 
-//Captura eventos comuns
-/*-----------------------------------------Event Handler-----------------------------------------------*/
-const eventFiles = fs.readdirSync('./eventos').filter(file => file.endsWith('.js'));
+
+client.on('guildDelete', guild => {
+	db.vanish(`${guild.id}`);
+})
+
+
+client.on('guildCreate', guild => {
+
+	let data = {
+		name: guild.name,
+		region: guild.region,
+		prefix: "$",
+		registred: true
+	}
+	db.add(`${guild.id}`, data);
+})
+//————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+const eventFiles = fs.readdirSync('./_modulos_/eventos').filter(file => file.endsWith('.js'));
 
 for (const file of eventFiles) {
-	const event = require(`./eventos/${file}`);
+	const event = require(`./_modulos_/eventos/${file}`);
 	if (event.once) {
-		client.once(event.name, (...args) => event.execute(...args));
+		client.once(event.name, (...args) => event.execute(...args, client));
 	} else {
-		client.on(event.name, (...args) => event.execute(...args));
+		client.on(event.name, (...args) => event.execute(...args, client));
 	}
 }
-/*-------------------------------------------------------------------------------------------------------*/
 
+//————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+client.commands = new Discord.Collection();
 
-
-
-//Captura os commandos
-/*-----------------------------------------Command Handler-----------------------------------------------*/
-
-
-const commandFiles = fs.readdirSync('./comandos').filter(file => file.endsWith('.js'));
+const commandFiles = fs.readdirSync('./_modulos_/comandos').filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-	const command = require(`./comandos/${file}`);
+	const command = require(`./_modulos_/comandos/${file}`);
 	client.commands.set(command.name, command);
 }
 
+
+/*
+✨
+✨
+✨
+*/
+
 client.on('message', message => {
+
+	//Coleta o prefixo na base de dados
+	let data = db.get(message.guild.id);
+	let prefix = data.prefix;
+
 	if (!message.content.startsWith(prefix) || message.author.bot) return;
+
 
 	const args = message.content.slice(prefix.length).trim().split(/ +/);
 	const command = args.shift().toLowerCase();
 
+
 	if (!client.commands.has(command)) return;
+
 
 	try {
 		client.commands.get(command).execute(message, args);
 	} catch (error) {
 		console.error(error);
-		message.reply('Um erro ocorreu!');
+		message.reply('there was an error trying to execute that command!');
 	}
 });
-/*-------------------------------------------------------------------------------------------------------*/
 
+//————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 
-
-//base de dados
-/*-----------------------------------------Database------------------------------------------------------*/
-
-
-    
-
-    client.on('guildMemberAdd', member => {
-
-        let userTable = {
-            userId:`${message.author.id}`,
-            userName:`${message.author.name}`,
-            userMoney:0,
-            userXp:0,
-            userInventory:[],
-            usersBadges:[],
-            redistred:true
-        };
-        
-    })
-/*-------------------------------------------------------------------------------------------------------*/
-
-
-
-
-client.login(secrets.token);
+//————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+client.login(config.token);
